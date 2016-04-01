@@ -98,6 +98,7 @@ int emi_flag_set(struct emi *e, uint32_t flag);
 int emi_flag_clear(struct emi *e, uint32_t flag);
 
 // disk
+struct emi * emi_disk_open(char *img_name);
 struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt);
 int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);
 int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);

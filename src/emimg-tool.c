@@ -294,6 +294,7 @@ int main(int argc, char **argv)
 		if (type == EMI_T_DISK) {
 			e = emi_disk_create(image, sector, cyls, heads, spt);
 		} else {
+			error("Unknown media type: %i", type);
 		}
 
 		// ok?

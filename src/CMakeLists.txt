@@ -1,5 +1,6 @@
 add_library(emimg-lib SHARED
 	emimg.c
+	disk.c
 )
 
 set_target_properties(emimg-lib PROPERTIES

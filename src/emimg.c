@@ -1,4 +1,4 @@
-//  Copyright (c) 2013-2015 Jakub Filipowicz <jakubf@gmail.com>
+//  Copyright (c) 2013-2016 Jakub Filipowicz <jakubf@gmail.com>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -112,9 +112,13 @@ void emi_header_print(struct emi *e)
 		e->flags & EMI_WORM ? "worm " : "",
 		e->flags & EMI_USED ? "used " : ""
 	);
-	printf("Total length : %u\n", e->len);
-	printf("CHS geometry : %u / %u / %u\n", e->cylinders, e->heads, e->spt);
-	printf("Block size   : %u bytes\n", e->block_size);
+	if (e->type == EMI_T_MTAPE) {
+		printf("Total length : %u\n", e->len);
+	}
+	if (e->type == EMI_T_DISK) {
+		printf("CHS geometry : %u / %u / %u\n", e->cylinders, e->heads, e->spt);
+		printf("Block size   : %u bytes\n", e->block_size);
+	}
 }
 
 // -----------------------------------------------------------------------
@@ -214,29 +218,8 @@ int emi_flag_clear(struct emi *e, uint32_t flag)
 }
 
 // -----------------------------------------------------------------------
-static int __emi_check_geometry(struct emi *e)
-{
-	switch (e->type) {
-		case EMI_T_DISK:
-			// CHS uses cyls, heads, spt and block size
-			if ((e->cylinders <= 0) || (e->heads <= 0) || (e->spt <= 0) || (e->block_size <= 0)) {
-				return EMI_E_GEOM;
-			}
-			break;
-		case EMI_T_PTAPE:
-		case EMI_T_MTAPE:
-			break;
-		default:
-			return EMI_E_IMG_TYPE;
-	}
-	return EMI_E_OK;
-}
-
-// -----------------------------------------------------------------------
 static int __emi_header_check(struct emi *e)
 {
-	int res;
-
 	// wrong magic
 	if (strncmp(e->magic, EMI_MAGIC, 4) != 0) {
 		return EMI_E_MAGIC;
@@ -252,12 +235,6 @@ static int __emi_header_check(struct emi *e)
 	// unknown flags set
 	if (e->flags & !EMI_FLAGS_ALL) {
 		return EMI_E_FLAGS;
-	}
-
-	// geometry ok?
-	res = __emi_check_geometry(e);
-	if (res != EMI_E_OK) {
-		return res;
 	}
 
 	return EMI_E_OK;
@@ -304,7 +281,7 @@ struct emi * emi_open(char *img_name)
 }
 
 // -----------------------------------------------------------------------
-struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt)
+struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags)
 {
 	int res;
 
@@ -330,22 +307,14 @@ struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylin
 	e->lib_v_major = EMIMG_VERSION_MAJOR;
 	e->lib_v_minor = EMIMG_VERSION_MINOR;
 	e->lib_v_patch = EMIMG_VERSION_PATCH;
-	e->type = EMI_T_DISK;
-	e->flags = 0;
+	e->type = type;
+	e->flags = flags;
 	e->cylinders = cylinders;
 	e->heads = heads;
 	e->spt = spt;
 	e->block_size = block_size;
-	e->len = 0;
+	e->len = len;
 	e->img_name = strdup(img_name);
-
-	// geometry ok?
-	res = __emi_check_geometry(e);
-	if (res != EMI_E_OK) {
-		emi_err = res;
-		free(e);
-		return NULL;
-	}
 
 	// create image file
 	e->image = fopen(img_name, "w+");
@@ -364,68 +333,6 @@ struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylin
 	}
 
 	return e;
-}
-
-// -----------------------------------------------------------------------
-static int chs2offset(struct emi *e, int cyl, int head, int sect)
-{
-	return e->block_size * (sect + (head * e->spt) + (cyl * e->heads * e->spt));
-}
-
-// -----------------------------------------------------------------------
-int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect)
-{
-	int res;
-
-	if (e->type != EMI_T_DISK) {
-		return EMI_E_ACCESS;
-	}
-
-	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return EMI_E_NO_SECTOR;
-	}
-
-	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
-	if (res < 0) {
-		return EMI_E_NO_SECTOR;
-	}
-
-	res = fread(buf, 1, e->block_size, e->image);
-	if (res != e->block_size) {
-		return EMI_E_READ;
-	}
-
-	return EMI_E_OK;
-}
-
-// -----------------------------------------------------------------------
-int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect)
-{
-	int res;
-
-	if (e->type != EMI_T_DISK) {
-		return EMI_E_ACCESS;
-	}
-
-	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return EMI_E_NO_SECTOR;
-	}
-
-	if (e->flags & EMI_WRPROTECT) {
-		return EMI_E_WRPROTECT;
-	}
-
-	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
-	if (res < 0) {
-		return EMI_E_NO_SECTOR;
-	}
-
-	res = fwrite(buf, 1, e->block_size, e->image);
-	if (res != e->block_size) {
-		return EMI_E_WRITE;
-	}
-
-	return EMI_E_OK;
 }
 
 // vim: tabstop=4 shiftwidth=4 autoindent

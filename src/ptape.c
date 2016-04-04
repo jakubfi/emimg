@@ -1,4 +1,4 @@
-//  Copyright (c) 2013-2016 Jakub Filipowicz <jakubf@gmail.com>
+//  Copyright (c)			break; 2016 Jakub Filipowicz <jakubf@gmail.com>
 //
 //  This program is free software; you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -26,100 +26,84 @@ void emi_close(struct emi *e);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
 
 // -----------------------------------------------------------------------
-struct emi * emi_disk_open(char *img_name)
+struct emi * emi_ptape_open(char *img_name)
 {
 	struct emi *e = emi_open(img_name);
 
-	if ((e->cylinders <= 0) || (e->heads <= 0) || (e->spt <= 0) || (e->block_size <= 0)) {
+	// punched tape?
+	if (e->type != EMI_T_PTAPE) {
 		emi_close(e);
-		e = NULL;
-		emi_err = -EMI_E_GEOM;
-	}
-
-	if (e->type != EMI_T_DISK) {
-		emi_close(e);
-		e = NULL;
 		emi_err = -EMI_E_IMG_TYPE;
+		return NULL;
 	}
 
 	return e;
 }
 
 // -----------------------------------------------------------------------
-void emi_disk_close(struct emi *e)
+void emi_ptape_close(struct emi *e)
 {
+	if (e->len != 0)  {
+		e->flags |= EMI_USED;
+	}
 	emi_close(e);
 }
 
 // -----------------------------------------------------------------------
-struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt)
+struct emi * emi_ptape_create(char *img_name)
 {
-	if ((cylinders <= 0) || (heads <= 0) || (spt <= 0) || (block_size <= 0)) {
-		emi_err = -EMI_E_GEOM;
+	struct emi *e;
+
+	// create image
+	e = emi_create(img_name, EMI_T_PTAPE, 0, 0, 0, 0, 0, 0);
+	if (!e) {
 		return NULL;
 	}
 
-	return emi_create(img_name, EMI_T_DISK, block_size, cylinders, heads, spt, 0, 0);
+	return e;
 }
 
 // -----------------------------------------------------------------------
-static int chs2offset(struct emi *e, int cyl, int head, int sect)
-{
-	return e->block_size * (sect + (head * e->spt) + (cyl * e->heads * e->spt));
-}
-
-// -----------------------------------------------------------------------
-int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect)
+int emi_ptape_read(struct emi *e)
 {
 	int res;
+	uint8_t data;
 
-	if (e->type != EMI_T_DISK) {
+	if (e->type != EMI_T_PTAPE) {
 		return -EMI_E_ACCESS;
 	}
 
-	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return -EMI_E_SEEK;
-	}
-
-	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
-	if (res < 0) {
-		return -EMI_E_SEEK;
-	}
-
-	res = fread(buf, 1, e->block_size, e->image);
-	if (res != e->block_size) {
+	res = fread(&data, 1, 1, e->image);
+	if (res != 1) {
+		if (feof(e->image)) {
+			return -EMI_E_EOF;
+		}
 		return -EMI_E_READ;
 	}
 
-	return EMI_E_OK;
+	return data;
 }
 
 // -----------------------------------------------------------------------
-int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect)
+int emi_ptape_write(struct emi *e, uint8_t data)
 {
 	int res;
 
-	if (e->type != EMI_T_DISK) {
+	if (e->type != EMI_T_PTAPE) {
 		return -EMI_E_ACCESS;
 	}
 
-	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return -EMI_E_SEEK;
-	}
-
-	if (e->flags & EMI_WRPROTECT) {
+	if ((e->flags & EMI_WRPROTECT) || ((e->flags & (EMI_WORM | EMI_USED)) == (EMI_WORM | EMI_USED))) {
 		return -EMI_E_WRPROTECT;
 	}
 
-	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
-	if (res < 0) {
-		return -EMI_E_SEEK;
-	}
-
-	res = fwrite(buf, 1, e->block_size, e->image);
-	if (res != e->block_size) {
+	// write data
+	res = fwrite(&data, 1, 1, e->image);
+	if (res != 1) {
 		return -EMI_E_WRITE;
 	}
+
+	e->len += 1;
 
 	return EMI_E_OK;
 }

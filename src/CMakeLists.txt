@@ -2,6 +2,7 @@ add_library(emimg-lib SHARED
 	emimg.c
 	disk.c
 	mtape.c
+	ptape.c
 )
 
 set_target_properties(emimg-lib PROPERTIES

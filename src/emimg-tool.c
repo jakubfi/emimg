@@ -58,6 +58,8 @@ static char *image, *src;
 static int type, cyls, heads, spt, sector, size;
 static int flags_set, flags_clear;
 
+void emi_close(struct emi *e);
+
 // -----------------------------------------------------------------------
 void error(char *format, ...)
 {
@@ -313,6 +315,7 @@ int main(int argc, char **argv)
 				break;
 			case EMI_T_PTAPE:
 			default:
+				e = emi_ptape_create(image);
 				error("Unknown media type: %i", type);
 				break;
 		}
@@ -343,6 +346,7 @@ int main(int argc, char **argv)
 				e = emi_mtape_open(image);
 				break;
 			case EMI_T_PTAPE:
+				e = emi_ptape_open(image);
 			default:
 				error("Unknown media type: %i", type);
 				break;

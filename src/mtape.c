@@ -39,6 +39,7 @@ struct emi_mtape_header {
 #define EM_MT_HDR_SIZE sizeof(struct emi_mtape_header)
 
 struct emi * emi_open(char *img_name);
+void emi_close(struct emi *e);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
 
 // -----------------------------------------------------------------------
@@ -102,6 +103,12 @@ struct emi * emi_mtape_open(char *img_name)
 	}
 
 	return e;
+}
+
+// -----------------------------------------------------------------------
+void emi_mtape_close(struct emi *e)
+{
+	emi_close(e);
 }
 
 // -----------------------------------------------------------------------

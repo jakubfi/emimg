@@ -51,7 +51,6 @@ static const struct preset known_presets[] = {
 	{ EMI_T_DISK, "flop5dshd", "Floppy 5.25\" DSHD 1.2MB", 80, 2, 15, 512 },
 	{ EMI_T_MTAPE, "mtape", "Magnetic tape", 0, 0, 0, 0 },
 	{ EMI_T_PTAPE, "ptape", "Punched tape", 0, 0, 0, 0 },
-	{ EMI_T_NONE, NULL, NULL, 0, 0, 0, 0 }
 };
 
 static char *image, *src;
@@ -338,19 +337,7 @@ int main(int argc, char **argv)
 		printf("Image ready.\n");
 
 	} else {
-		switch (type) {
-			case EMI_T_DISK:
-				e = emi_disk_open(image);
-				break;
-			case EMI_T_MTAPE:
-				e = emi_mtape_open(image);
-				break;
-			case EMI_T_PTAPE:
-				e = emi_ptape_open(image);
-			default:
-				error("Unknown media type: %i", type);
-				break;
-		}
+		e = emi_open(image);
 		if (!e) {
 			error("Could not open image: %s", emi_get_err(emi_err));
 		}

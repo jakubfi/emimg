@@ -64,7 +64,6 @@ enum emi_media_flags {
 #define EMI_FLAGS_SETTABLE	(EMI_WRPROTECT)
 
 enum emi_media_type {
-	EMI_T_NONE = 0,		// media type not set
 	EMI_T_DISK,			// hard disk drive
 	EMI_T_PTAPE,		// punched tape
 	EMI_T_MTAPE,		// magnetic tape
@@ -94,21 +93,19 @@ struct emi {
 };
 
 // management
+struct emi * emi_open(char *img_name);
+void emi_close(struct emi *e);
 const char * emi_get_err(int i);
 void emi_header_print(struct emi *e);
 int emi_flag_set(struct emi *e, uint32_t flag);
 int emi_flag_clear(struct emi *e, uint32_t flag);
 
 // disk
-struct emi * emi_disk_open(char *img_name);
-void emi_disk_close(struct emi *e);
 struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt);
 int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);
 int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);
 
 // magnetic tape
-struct emi * emi_mtape_open(char *img_name);
-void emi_mtape_close(struct emi *e);
 struct emi * emi_mtape_create(char *img_name, uint32_t size);
 int emi_mtape_read(struct emi *e, uint8_t *buf);
 int emi_mtape_write(struct emi *e, uint8_t *buf, unsigned size);
@@ -118,8 +115,6 @@ int emi_mtape_rew(struct emi *e);
 int emi_mtape_bot(struct emi *e);
 
 // punched tape
-struct emi * emi_ptape_open(char *img_name);
-void emi_ptape_close(struct emi *e);
 struct emi * emi_ptape_create(char *img_name);
 int emi_ptape_read(struct emi *e);
 int emi_ptape_write(struct emi *e, uint8_t data);

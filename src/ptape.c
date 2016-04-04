@@ -21,24 +21,7 @@
 
 #include "emimg.h"
 
-struct emi * emi_open(char *img_name);
-void emi_close(struct emi *e);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
-
-// -----------------------------------------------------------------------
-struct emi * emi_ptape_open(char *img_name)
-{
-	struct emi *e = emi_open(img_name);
-
-	// punched tape?
-	if (e->type != EMI_T_PTAPE) {
-		emi_close(e);
-		emi_err = -EMI_E_IMG_TYPE;
-		return NULL;
-	}
-
-	return e;
-}
 
 // -----------------------------------------------------------------------
 void emi_ptape_close(struct emi *e)
@@ -46,7 +29,6 @@ void emi_ptape_close(struct emi *e)
 	if (e->len != 0)  {
 		e->flags |= EMI_USED;
 	}
-	emi_close(e);
 }
 
 // -----------------------------------------------------------------------

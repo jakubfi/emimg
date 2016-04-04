@@ -21,34 +21,16 @@
 
 #include "emimg.h"
 
-struct emi * emi_open(char *img_name);
-void emi_close(struct emi *e);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
 
 // -----------------------------------------------------------------------
-struct emi * emi_disk_open(char *img_name)
+int emi_disk_open(struct emi *e)
 {
-	struct emi *e = emi_open(img_name);
-
 	if ((e->cylinders <= 0) || (e->heads <= 0) || (e->spt <= 0) || (e->block_size <= 0)) {
-		emi_close(e);
-		e = NULL;
-		emi_err = -EMI_E_GEOM;
+		return -EMI_E_GEOM;
 	}
 
-	if (e->type != EMI_T_DISK) {
-		emi_close(e);
-		e = NULL;
-		emi_err = -EMI_E_IMG_TYPE;
-	}
-
-	return e;
-}
-
-// -----------------------------------------------------------------------
-void emi_disk_close(struct emi *e)
-{
-	emi_close(e);
+	return EMI_E_OK;
 }
 
 // -----------------------------------------------------------------------

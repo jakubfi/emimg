@@ -56,6 +56,24 @@ static const char *emi_error_desc[] = {
 /* EMI_E_UNKNOWN */			"unknown error",
 };
 
+typedef int (*emi_open_f)(struct emi *e);
+typedef void (*emi_close_f)(struct emi *e);
+
+struct emi_media_drv {
+	emi_open_f open;
+	emi_close_f close;
+};
+
+int emi_mtape_open(struct emi *e);
+void emi_ptape_close(struct emi *e);
+int emi_disk_open(struct emi *e);
+
+struct emi_media_drv emi_media_drivers[] = {
+/* EMI_T_DISK */	{emi_disk_open, NULL},
+/* EMI_T_PTAPE */	{NULL, emi_ptape_close},
+/* EMI_T_MTAPE */	{emi_mtape_open, NULL},
+};
+
 static int __emi_header_write(struct emi *e);
 
 // -----------------------------------------------------------------------
@@ -63,10 +81,15 @@ void emi_close(struct emi *e)
 {
 	if (!e) return;
 
+	if ((e->type >= 0) && (e->type < EMI_T_MAX) && emi_media_drivers[e->type].close) {
+		emi_media_drivers[e->type].close(e);
+	}
+
 	if (e->image) {
 		__emi_header_write(e);
 		fclose(e->image);
 	}
+
 	if (e->img_name) free(e->img_name);
 	free(e);
 }
@@ -261,6 +284,10 @@ struct emi * emi_open(char *img_name)
 	}
 
 	e->img_name = strdup(img_name);
+
+	if ((e->type >= 0) && (e->type < EMI_T_MAX) && emi_media_drivers[e->type].open) {
+		emi_media_drivers[e->type].open(e);
+	}
 
 	return e;
 }

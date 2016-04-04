@@ -27,10 +27,4 @@ install(TARGETS emimg
 	RUNTIME DESTINATION bin
 )
 
-add_executable(emitest
-	test.c
-)
-
-target_link_libraries(emitest emimg-lib)
-
 # vim: tabstop=4

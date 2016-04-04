@@ -38,8 +38,6 @@ struct emi_mtape_header {
 
 #define EM_MT_HDR_SIZE sizeof(struct emi_mtape_header)
 
-struct emi * emi_open(char *img_name);
-void emi_close(struct emi *e);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
 
 // -----------------------------------------------------------------------
@@ -81,34 +79,17 @@ static int emi_mtape_full(struct emi *e)
 }
 
 // -----------------------------------------------------------------------
-struct emi * emi_mtape_open(char *img_name)
+int emi_mtape_open(struct emi *e)
 {
 	int res;
-
-	struct emi *e = emi_open(img_name);
-
-	// magnetic tape tape?
-	if (e->type != EMI_T_MTAPE) {
-		emi_close(e);
-		emi_err = -EMI_E_IMG_TYPE;
-		return NULL;
-	}
 
 	// seek to tape start
 	res = emi_mtape_bot(e);
 	if (res != EMI_E_OK) {
-		emi_close(e);
-		emi_err = res;
-		return NULL;
+		return res;
 	}
 
-	return e;
-}
-
-// -----------------------------------------------------------------------
-void emi_mtape_close(struct emi *e)
-{
-	emi_close(e);
+	return EMI_E_OK;
 }
 
 // -----------------------------------------------------------------------

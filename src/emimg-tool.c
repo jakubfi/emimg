@@ -91,19 +91,21 @@ void print_help()
 	printf("  --help-preset           : show available media presets\n");
 	printf("  --image, -i <filename>  : image file name\n");
 	printf("  --preset, -p <name>     : select media preset (see --help-preset)\n");
-	printf("  --src, -r <filename>    : import image contents from raw file <filename>\n");
+	printf("  --src, -r <filename>    : import image contents from a raw file (disk only)\n");
 	printf("  --cyls, -c <cylinders>  : number of cylinders\n");
 	printf("  --heads, -h <heads>     : number of heads\n");
 	printf("  --spt, -s <sectors>     : sectors per track\n");
 	printf("  --sector, -l <bytes>    : sector length (bytes)\n");
-	printf("  --size <bytes>          : media size (only for magnetic tape)\n");
+	printf("  --size, -z <megabytes>  : media size (in MB, only for magnetic tape)\n");
 	printf("  --protect|--no-protect  : set media write-protected/-unprotected\n");
 	printf("\nUsage:\n");
 	printf("  * Show the header of an existing media:\n");
 	printf("      emimg -i <filename>\n");
-	printf("  * Create empty disk:\n");
+	printf("  * Create empty media:\n");
 	printf("      emimg -i <filename> -p disk -c <cylinders> -h <heads> -s <sectors_per_track> -l <bytes>\n");
 	printf("      emimg -i <filename> -p <name> [-c <cylinders>] [-h <heads>] [-s <sectors_per_track>] [-l <bytes>]\n");
+	printf("      emimg -i <filename> -p mtape -z <megabytes>\n");
+	printf("      emimg -i <filename> -p ptape\n");
 	printf("  * Create new disk and import raw image data:\n");
 	printf("      emimg -i <filename> -p disk -r <source> -c <cylinders> -h <heads> -s <sectors> -l <bytes>\n");
 	printf("  * Set/clear write protection:\n");
@@ -140,6 +142,7 @@ void parse_opts(int argc, char **argv)
 		{ "heads",		1,	0, 'h' },
 		{ "spt",		1,	0, 's' },
 		{ "sector",		1,	0, 'l' },
+		{ "size",		1,  0, 'z' },
 		{ "protect",	0,	0, OPT_PROTECT },
 		{ "no-protect",	0,	0, OPT_NOPROTECT },
 		{ "help",		0,	0, OPT_HELP },
@@ -148,7 +151,7 @@ void parse_opts(int argc, char **argv)
 	};
 
 	while (1) {
-		opt = getopt_long(argc, argv,"i:p:r:c:h:s:l:", opts, &idx);
+		opt = getopt_long(argc, argv,"i:p:r:c:h:s:l:z:", opts, &idx);
 		if (opt == -1) {
 			break;
 		}
@@ -197,6 +200,9 @@ void parse_opts(int argc, char **argv)
 			case 'l':
 				sector = atoi(optarg);
 				break;
+			case 'z':
+				size = atoi(optarg) * 1024 * 1024;
+				break;
 			default:
 				error("Wrong usage.");
 				break;
@@ -207,12 +213,20 @@ void parse_opts(int argc, char **argv)
 		error("Image name is required");
 	}
 
+	if ((type == EMI_T_MTAPE) && (size == 0)) {
+		error("Creating magnetic tape image requires --size option");
+	}
+
 	if ((type != EMI_T_MTAPE) && (size != 0)) {
 		error("You can only set size for magnetic tape images");
 	}
 
 	if ((type != EMI_T_DISK) && (cyls || heads || spt)) {
-		error("Options: --cyls, --heads, --spt can be used only for disj images");
+		error("Options: --cyls, --heads, --spt can be used only for disk images");
+	}
+
+	if ((type != EMI_T_DISK) && (src)) {
+		error("Can only import disk image contents");
 	}
 }
 
@@ -290,11 +304,17 @@ int main(int argc, char **argv)
 
 	// create media?
 	if (type != 0) {
-		// create as requested
-		if (type == EMI_T_DISK) {
-			e = emi_disk_create(image, sector, cyls, heads, spt);
-		} else {
-			error("Unknown media type: %i", type);
+		switch (type) {
+			case EMI_T_DISK:
+				e = emi_disk_create(image, sector, cyls, heads, spt);
+				break;
+			case EMI_T_MTAPE:
+				e = emi_mtape_create(image, size);
+				break;
+			case EMI_T_PTAPE:
+			default:
+				error("Unknown media type: %i", type);
+				break;
 		}
 
 		// ok?
@@ -315,7 +335,18 @@ int main(int argc, char **argv)
 		printf("Image ready.\n");
 
 	} else {
-		e = emi_open(image);
+		switch (type) {
+			case EMI_T_DISK:
+				e = emi_disk_open(image);
+				break;
+			case EMI_T_MTAPE:
+				e = emi_mtape_open(image);
+				break;
+			case EMI_T_PTAPE:
+			default:
+				error("Unknown media type: %i", type);
+				break;
+		}
 		if (!e) {
 			error("Could not open image: %s", emi_get_err(emi_err));
 		}

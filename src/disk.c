@@ -21,6 +21,7 @@
 
 #include "emimg.h"
 
+struct emi * emi_open(char *img_name);
 struct emi * emi_create(char *img_name, uint16_t type, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt, uint32_t len, uint32_t flags);
 
 // -----------------------------------------------------------------------
@@ -31,13 +32,13 @@ struct emi * emi_disk_open(char *img_name)
 	if ((e->cylinders <= 0) || (e->heads <= 0) || (e->spt <= 0) || (e->block_size <= 0)) {
 		emi_close(e);
 		e = NULL;
-		emi_err = EMI_E_GEOM;
+		emi_err = -EMI_E_GEOM;
 	}
 
 	if (e->type != EMI_T_DISK) {
 		emi_close(e);
 		e = NULL;
-		emi_err = EMI_E_IMG_TYPE;
+		emi_err = -EMI_E_IMG_TYPE;
 	}
 
 	return e;
@@ -47,7 +48,7 @@ struct emi * emi_disk_open(char *img_name)
 struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt)
 {
 	if ((cylinders <= 0) || (heads <= 0) || (spt <= 0) || (block_size <= 0)) {
-		emi_err = EMI_E_GEOM;
+		emi_err = -EMI_E_GEOM;
 		return NULL;
 	}
 
@@ -66,21 +67,21 @@ int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsi
 	int res;
 
 	if (e->type != EMI_T_DISK) {
-		return EMI_E_ACCESS;
+		return -EMI_E_ACCESS;
 	}
 
 	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return EMI_E_NO_SECTOR;
+		return -EMI_E_SEEK;
 	}
 
 	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
 	if (res < 0) {
-		return EMI_E_NO_SECTOR;
+		return -EMI_E_SEEK;
 	}
 
 	res = fread(buf, 1, e->block_size, e->image);
 	if (res != e->block_size) {
-		return EMI_E_READ;
+		return -EMI_E_READ;
 	}
 
 	return EMI_E_OK;
@@ -92,25 +93,25 @@ int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, uns
 	int res;
 
 	if (e->type != EMI_T_DISK) {
-		return EMI_E_ACCESS;
+		return -EMI_E_ACCESS;
 	}
 
 	if ((cyl >= e->cylinders) || (head >= e->heads) || (sect >= e->spt)) {
-		return EMI_E_NO_SECTOR;
+		return -EMI_E_SEEK;
 	}
 
 	if (e->flags & EMI_WRPROTECT) {
-		return EMI_E_WRPROTECT;
+		return -EMI_E_WRPROTECT;
 	}
 
 	res = fseek(e->image, EMI_HEADER_SIZE + chs2offset(e, cyl, head, sect), SEEK_SET);
 	if (res < 0) {
-		return EMI_E_NO_SECTOR;
+		return -EMI_E_SEEK;
 	}
 
 	res = fwrite(buf, 1, e->block_size, e->image);
 	if (res != e->block_size) {
-		return EMI_E_WRITE;
+		return -EMI_E_WRITE;
 	}
 
 	return EMI_E_OK;

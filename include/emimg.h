@@ -36,7 +36,7 @@ enum emi_errors {
 	EMI_E_ALLOC,
 	EMI_E_HEADER_WRITE,
 	EMI_E_HEADER_READ,
-	EMI_E_NO_SECTOR,
+	EMI_E_SEEK,
 	EMI_E_READ,
 	EMI_E_WRITE,
 	EMI_E_MAGIC,
@@ -47,6 +47,9 @@ enum emi_errors {
 	EMI_E_WRPROTECT,
 	EMI_E_ACCESS,
 	EMI_E_GEOM,
+	EMI_E_BOT,
+	EMI_E_EOT,
+	EMI_E_EOF,
 
 	EMI_E_MAX,
 };
@@ -87,10 +90,10 @@ struct emi {
 #define EMI_HEADER_SIZE		  25
 	char *img_name;
 	FILE *image;
+	uint8_t hbuf[EMI_HEADER_SIZE];
 };
 
 // management
-struct emi * emi_open(char *img_name);
 void emi_close(struct emi *e);
 const char * emi_get_err(int i);
 void emi_header_print(struct emi *e);
@@ -102,6 +105,16 @@ struct emi * emi_disk_open(char *img_name);
 struct emi * emi_disk_create(char *img_name, uint16_t block_size, uint16_t cylinders, uint8_t heads, uint8_t spt);
 int emi_disk_read(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);
 int emi_disk_write(struct emi *e, uint8_t *buf, unsigned cyl, unsigned head, unsigned sect);
+
+// tape
+struct emi * emi_mtape_create(char *img_name, uint32_t size);
+struct emi * emi_mtape_open(char *img_name);
+int emi_mtape_read(struct emi *e, uint8_t *buf);
+int emi_mtape_write(struct emi *e, uint8_t *buf, unsigned size);
+int emi_mtape_write_eof(struct emi *e);
+int emi_mtape_fwd(struct emi *e);
+int emi_mtape_rew(struct emi *e);
+int emi_mtape_bot(struct emi *e);
 
 #endif
 

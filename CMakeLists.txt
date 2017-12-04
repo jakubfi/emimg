@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.4)
 project(emimg C)
+
+include(GNUInstallDirs)
 include(appversion.cmake)
+
 set(DEBUG 1)
 
 # software version
@@ -36,7 +39,7 @@ configure_file(
 install(FILES
 	${PROJECT_BINARY_DIR}/emimg-config.cmake
 	${PROJECT_BINARY_DIR}/emimg-config-version.cmake
-	DESTINATION lib/emimg
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/emimg
 	COMPONENT dev
 )
 

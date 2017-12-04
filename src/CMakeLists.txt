@@ -12,9 +12,9 @@ set_target_properties(emimg-lib PROPERTIES
 )
 
 install(TARGETS emimg-lib
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 add_executable(emimg
@@ -24,7 +24,7 @@ add_executable(emimg
 target_link_libraries(emimg emimg-lib)
 
 install(TARGETS emimg
-	RUNTIME DESTINATION bin
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 # vim: tabstop=4

@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#ifdef __cplusplus
+extern "C"
+#endif
+
 extern int emi_err;
 
 enum emi_open_modes {
@@ -118,6 +122,10 @@ int emi_mtape_bot(struct emi *e);
 struct emi * emi_ptape_create(char *img_name);
 int emi_ptape_read(struct emi *e);
 int emi_ptape_write(struct emi *e, uint8_t data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
